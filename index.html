@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotizador de Proyectos</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Cotizador de Proyectos</h1>
+            <p class="subtitle">Calcula el costo de tus proyectos basado en tiempo y herramientas</p>
+        </header>
+
+        <!-- Configuración de Tarifa -->
+        <section class="card">
+            <h2>Configuración de Tarifa</h2>
+            <div class="config-info">
+                <div class="info-item">
+                    <label>Costo Mensual:</label>
+                    <input type="number" id="monthlyCost" value="100000" min="0" step="1000">
+                    <span class="currency">MXN</span>
+                </div>
+                <div class="info-item">
+                    <label>Horas Diarias:</label>
+                    <input type="number" id="dailyHours" value="8" min="1" max="24">
+                    <span class="unit">horas</span>
+                </div>
+                <div class="info-item">
+                    <label>Días Semanales:</label>
+                    <input type="number" id="weeklyDays" value="5" min="1" max="7">
+                    <span class="unit">días</span>
+                </div>
+            </div>
+            <div class="calculated-rate">
+                <strong>Tu tarifa por hora:</strong>
+                <span id="hourlyRate" class="highlight">$0.00</span>
+                <span class="currency">MXN/hora</span>
+            </div>
+        </section>
+
+        <!-- Scope of Work (SOW) -->
+        <section class="card">
+            <h2>Scope of Work (SOW)</h2>
+            <div class="sow-input">
+                <input type="text" id="taskName" placeholder="Nombre de la tarea">
+                <input type="number" id="taskHours" placeholder="Horas" min="0" step="0.5">
+                <button id="addTask" class="btn-primary">Agregar Tarea</button>
+            </div>
+            <div class="tasks-list" id="tasksList">
+                <!-- Las tareas se agregarán dinámicamente aquí -->
+            </div>
+            <div class="tasks-summary">
+                <div class="summary-item">
+                    <span>Total de Horas:</span>
+                    <strong id="totalHours">0</strong>
+                    <span class="unit">horas</span>
+                </div>
+                <div class="summary-item">
+                    <span>Costo de Trabajo:</span>
+                    <strong id="laborCost" class="highlight">$0.00</strong>
+                    <span class="currency">MXN</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Herramientas -->
+        <section class="card">
+            <h2>Herramientas y Recursos</h2>
+            <div class="tool-input">
+                <input type="text" id="toolName" placeholder="Nombre de la herramienta">
+                <input type="number" id="toolMonthlyCost" placeholder="Costo mensual (MXN)" min="0" step="100">
+                <button id="addTool" class="btn-primary">Agregar Herramienta</button>
+            </div>
+            <div class="tools-list" id="toolsList">
+                <!-- Las herramientas se agregarán dinámicamente aquí -->
+            </div>
+            <div class="tools-summary">
+                <div class="summary-item">
+                    <span>Costo de Herramientas:</span>
+                    <strong id="toolsCost" class="highlight">$0.00</strong>
+                    <span class="currency">MXN</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Resumen Final -->
+        <section class="card total-card">
+            <h2>Cotización Total del Proyecto</h2>
+            <div class="final-summary">
+                <div class="summary-row">
+                    <span>Costo de Trabajo:</span>
+                    <strong id="finalLaborCost">$0.00 MXN</strong>
+                </div>
+                <div class="summary-row">
+                    <span>Costo de Herramientas:</span>
+                    <strong id="finalToolsCost">$0.00 MXN</strong>
+                </div>
+                <div class="summary-row total-row">
+                    <span>TOTAL DEL PROYECTO:</span>
+                    <strong id="finalTotal" class="total-amount">$0.00 MXN</strong>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="exportBtn" class="btn-secondary">Exportar Cotización</button>
+                <button id="clearBtn" class="btn-secondary">Limpiar Todo</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
