@@ -16,27 +16,14 @@
         <!-- Configuración de Tarifa -->
         <section class="card">
             <h2>Configuración de Tarifa</h2>
-            <div class="config-info">
-                <div class="info-item">
-                    <label>Costo Mensual:</label>
-                    <input type="number" id="monthlyCost" value="100000" min="0" step="1000">
-                    <span class="currency">MXN</span>
-                </div>
-                <div class="info-item">
-                    <label>Horas Diarias:</label>
-                    <input type="number" id="dailyHours" value="8" min="1" max="24">
-                    <span class="unit">horas</span>
-                </div>
-                <div class="info-item">
-                    <label>Días Semanales:</label>
-                    <input type="number" id="weeklyDays" value="5" min="1" max="7">
-                    <span class="unit">días</span>
-                </div>
+            <p class="subtitle">Base de cálculo: 5 días a la semana × 8 horas diarias = 160 horas/mes</p>
+            <div class="position-input">
+                <input type="text" id="positionName" placeholder="Nombre del puesto">
+                <input type="number" id="positionMonthlyCost" placeholder="Costo mensual (MXN)" min="0" step="1000">
+                <button id="addPosition" class="btn-primary">Agregar Puesto</button>
             </div>
-            <div class="calculated-rate">
-                <strong>Tu tarifa por hora:</strong>
-                <span id="hourlyRate" class="highlight">$0.00</span>
-                <span class="currency">MXN/hora</span>
+            <div class="positions-list" id="positionsList">
+                <!-- Los puestos se agregarán dinámicamente aquí -->
             </div>
         </section>
 
@@ -45,7 +32,6 @@
             <h2>Scope of Work (SOW)</h2>
             <div class="sow-input">
                 <input type="text" id="taskName" placeholder="Nombre de la tarea">
-                <input type="number" id="taskHours" placeholder="Horas" min="0" step="0.5">
                 <button id="addTask" class="btn-primary">Agregar Tarea</button>
             </div>
             <div class="tasks-list" id="tasksList">
