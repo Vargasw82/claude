@@ -1,21 +1,19 @@
 // Estado de la aplicación
 const state = {
-    monthlyCost: 100000,
     dailyHours: 8,
     weeklyDays: 5,
-    hourlyRate: 0,
-    tasks: [],
+    positions: [], // [{id, name, monthlyCost, hourlyRate}]
+    tasks: [], // [{id, name, positionHours: {positionId: hours}}]
     tools: []
 };
 
 // Elementos del DOM
 const elements = {
-    monthlyCost: document.getElementById('monthlyCost'),
-    dailyHours: document.getElementById('dailyHours'),
-    weeklyDays: document.getElementById('weeklyDays'),
-    hourlyRate: document.getElementById('hourlyRate'),
+    positionName: document.getElementById('positionName'),
+    positionMonthlyCost: document.getElementById('positionMonthlyCost'),
+    addPosition: document.getElementById('addPosition'),
+    positionsList: document.getElementById('positionsList'),
     taskName: document.getElementById('taskName'),
-    taskHours: document.getElementById('taskHours'),
     addTask: document.getElementById('addTask'),
     tasksList: document.getElementById('tasksList'),
     totalHours: document.getElementById('totalHours'),
@@ -33,25 +31,39 @@ const elements = {
 };
 
 // Funciones de cálculo
-function calculateHourlyRate() {
-    // Horas mensuales = horas diarias × días semanales × 4.33 (semanas promedio por mes)
-    const monthlyHours = state.dailyHours * state.weeklyDays * 4.33;
-    state.hourlyRate = state.monthlyCost / monthlyHours;
-    return state.hourlyRate;
+function calculateHourlyRate(monthlyCost) {
+    // 5 días × 8 horas × 4 semanas = 160 horas/mes
+    const monthlyHours = state.dailyHours * state.weeklyDays * 4;
+    return monthlyCost / monthlyHours;
+}
+
+function calculateMonthlyHours() {
+    return state.dailyHours * state.weeklyDays * 4;
 }
 
 function calculateTotalHours() {
-    return state.tasks.reduce((total, task) => total + task.hours, 0);
+    return state.tasks.reduce((total, task) => {
+        const taskHours = Object.values(task.positionHours).reduce((sum, hours) => sum + hours, 0);
+        return total + taskHours;
+    }, 0);
 }
 
 function calculateLaborCost() {
-    const totalHours = calculateTotalHours();
-    return totalHours * state.hourlyRate;
+    return state.tasks.reduce((total, task) => {
+        const taskCost = Object.entries(task.positionHours).reduce((sum, [positionId, hours]) => {
+            const position = state.positions.find(p => p.id === parseInt(positionId));
+            if (position) {
+                return sum + (hours * position.hourlyRate);
+            }
+            return sum;
+        }, 0);
+        return total + taskCost;
+    }, 0);
 }
 
 function calculateToolsCost() {
     const totalProjectHours = calculateTotalHours();
-    const monthlyHours = state.dailyHours * state.weeklyDays * 4.33;
+    const monthlyHours = calculateMonthlyHours();
 
     return state.tools.reduce((total, tool) => {
         // Costo prorrateado = (costo mensual / horas mensuales) × horas del proyecto
@@ -81,11 +93,6 @@ function formatNumber(number) {
 }
 
 // Funciones de actualización de UI
-function updateHourlyRate() {
-    const rate = calculateHourlyRate();
-    elements.hourlyRate.textContent = formatCurrency(rate).replace('MXN', '').trim();
-}
-
 function updateTasksSummary() {
     const totalHours = calculateTotalHours();
     const laborCost = calculateLaborCost();
@@ -110,35 +117,110 @@ function updateFinalSummary() {
 }
 
 function updateAllSummaries() {
-    updateHourlyRate();
     updateTasksSummary();
     updateToolsSummary();
     updateFinalSummary();
 }
 
+// Gestión de puestos
+function addPosition() {
+    const name = elements.positionName.value.trim();
+    const monthlyCost = parseFloat(elements.positionMonthlyCost.value);
+
+    if (!name || !monthlyCost || monthlyCost <= 0) {
+        alert('Por favor, ingresa un nombre de puesto válido y un costo mayor a 0');
+        return;
+    }
+
+    const position = {
+        id: Date.now(),
+        name,
+        monthlyCost,
+        hourlyRate: calculateHourlyRate(monthlyCost)
+    };
+
+    state.positions.push(position);
+    renderPosition(position);
+    updateAllSummaries();
+
+    // Limpiar inputs
+    elements.positionName.value = '';
+    elements.positionMonthlyCost.value = '';
+    elements.positionName.focus();
+}
+
+function removePosition(positionId) {
+    if (!confirm('¿Estás seguro? Se eliminarán las horas asociadas a este puesto en todas las tareas.')) {
+        return;
+    }
+
+    state.positions = state.positions.filter(position => position.id !== positionId);
+
+    // Eliminar horas de este puesto en todas las tareas
+    state.tasks.forEach(task => {
+        delete task.positionHours[positionId];
+    });
+
+    renderPositions();
+    renderTasks();
+    updateAllSummaries();
+}
+
+function renderPosition(position) {
+    const positionDiv = document.createElement('div');
+    positionDiv.className = 'position-item';
+    positionDiv.dataset.positionId = position.id;
+
+    positionDiv.innerHTML = `
+        <div class="position-info">
+            <div class="position-name">${position.name}</div>
+            <div class="position-details">
+                Costo mensual: ${formatCurrency(position.monthlyCost)} |
+                Tarifa por hora: ${formatCurrency(position.hourlyRate)}
+            </div>
+        </div>
+        <button class="btn-delete" onclick="removePosition(${position.id})">Eliminar</button>
+    `;
+
+    elements.positionsList.appendChild(positionDiv);
+}
+
+function renderPositions() {
+    elements.positionsList.innerHTML = '';
+    state.positions.forEach(position => renderPosition(position));
+}
+
 // Gestión de tareas
 function addTask() {
     const name = elements.taskName.value.trim();
-    const hours = parseFloat(elements.taskHours.value);
 
-    if (!name || !hours || hours <= 0) {
-        alert('Por favor, ingresa un nombre de tarea válido y horas mayores a 0');
+    if (!name) {
+        alert('Por favor, ingresa un nombre de tarea válido');
+        return;
+    }
+
+    if (state.positions.length === 0) {
+        alert('Por favor, agrega al menos un puesto antes de crear tareas');
         return;
     }
 
     const task = {
         id: Date.now(),
         name,
-        hours
+        positionHours: {} // {positionId: hours}
     };
+
+    // Inicializar horas en 0 para todos los puestos
+    state.positions.forEach(position => {
+        task.positionHours[position.id] = 0;
+    });
 
     state.tasks.push(task);
     renderTask(task);
     updateAllSummaries();
 
-    // Limpiar inputs
+    // Limpiar input
     elements.taskName.value = '';
-    elements.taskHours.value = '';
     elements.taskName.focus();
 }
 
@@ -148,20 +230,91 @@ function removeTask(taskId) {
     updateAllSummaries();
 }
 
-function renderTask(task) {
-    const taskCost = task.hours * state.hourlyRate;
+function updateTaskHours(taskId, positionId, hours) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (task) {
+        task.positionHours[positionId] = parseFloat(hours) || 0;
+        updateTaskDisplay(taskId);
+        updateAllSummaries();
+    }
+}
 
+function updateTaskDisplay(taskId) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const taskDiv = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (!taskDiv) return;
+
+    const totalTaskHours = Object.values(task.positionHours).reduce((sum, hours) => sum + hours, 0);
+    const taskCost = Object.entries(task.positionHours).reduce((sum, [positionId, hours]) => {
+        const position = state.positions.find(p => p.id === parseInt(positionId));
+        if (position) {
+            return sum + (hours * position.hourlyRate);
+        }
+        return sum;
+    }, 0);
+
+    const totalHoursSpan = taskDiv.querySelector('.task-total-hours');
+    const taskCostSpan = taskDiv.querySelector('.task-total-cost');
+
+    if (totalHoursSpan) {
+        totalHoursSpan.textContent = formatNumber(totalTaskHours);
+    }
+    if (taskCostSpan) {
+        taskCostSpan.textContent = formatCurrency(taskCost);
+    }
+}
+
+function renderTask(task) {
     const taskDiv = document.createElement('div');
     taskDiv.className = 'task-item';
     taskDiv.dataset.taskId = task.id;
 
+    const totalTaskHours = Object.values(task.positionHours).reduce((sum, hours) => sum + hours, 0);
+    const taskCost = Object.entries(task.positionHours).reduce((sum, [positionId, hours]) => {
+        const position = state.positions.find(p => p.id === parseInt(positionId));
+        if (position) {
+            return sum + (hours * position.hourlyRate);
+        }
+        return sum;
+    }, 0);
+
+    let positionInputsHTML = '';
+    state.positions.forEach(position => {
+        const hours = task.positionHours[position.id] || 0;
+        positionInputsHTML += `
+            <div class="position-hours-input">
+                <label>${position.name}:</label>
+                <input type="number"
+                       value="${hours}"
+                       min="0"
+                       step="0.5"
+                       onchange="updateTaskHours(${task.id}, ${position.id}, this.value)"
+                       placeholder="Horas">
+                <span class="unit">hrs</span>
+            </div>
+        `;
+    });
+
     taskDiv.innerHTML = `
-        <div class="task-info">
+        <div class="task-header">
             <div class="task-name">${task.name}</div>
-            <div class="task-details">${formatNumber(task.hours)} horas</div>
+            <button class="btn-delete" onclick="removeTask(${task.id})">Eliminar</button>
         </div>
-        <div class="task-cost">${formatCurrency(taskCost)}</div>
-        <button class="btn-delete" onclick="removeTask(${task.id})">Eliminar</button>
+        <div class="task-positions">
+            ${positionInputsHTML}
+        </div>
+        <div class="task-summary">
+            <div class="task-summary-item">
+                <span>Total horas:</span>
+                <strong class="task-total-hours">${formatNumber(totalTaskHours)}</strong>
+            </div>
+            <div class="task-summary-item">
+                <span>Costo:</span>
+                <strong class="task-total-cost highlight">${formatCurrency(taskCost)}</strong>
+            </div>
+        </div>
     `;
 
     elements.tasksList.appendChild(taskDiv);
@@ -206,7 +359,7 @@ function removeTool(toolId) {
 
 function renderTool(tool) {
     const totalProjectHours = calculateTotalHours();
-    const monthlyHours = state.dailyHours * state.weeklyDays * 4.33;
+    const monthlyHours = calculateMonthlyHours();
     const proratedCost = totalProjectHours > 0
         ? (tool.monthlyCost / monthlyHours) * totalProjectHours
         : 0;
@@ -246,11 +399,19 @@ function exportQuote() {
     exportText += '         COTIZACIÓN DE PROYECTO\n';
     exportText += '═══════════════════════════════════════════\n\n';
 
-    exportText += 'CONFIGURACIÓN:\n';
-    exportText += `- Costo mensual: ${formatCurrency(state.monthlyCost)}\n`;
-    exportText += `- Horas diarias: ${state.dailyHours}\n`;
-    exportText += `- Días semanales: ${state.weeklyDays}\n`;
-    exportText += `- Tarifa por hora: ${formatCurrency(state.hourlyRate)}\n\n`;
+    exportText += 'CONFIGURACIÓN DE TARIFA:\n';
+    exportText += `Base de cálculo: ${state.weeklyDays} días × ${state.dailyHours} horas × 4 semanas = ${calculateMonthlyHours()} horas/mes\n\n`;
+
+    if (state.positions.length === 0) {
+        exportText += 'No hay puestos configurados\n\n';
+    } else {
+        exportText += 'Puestos:\n';
+        state.positions.forEach((position, index) => {
+            exportText += `${index + 1}. ${position.name}\n`;
+            exportText += `   Costo mensual: ${formatCurrency(position.monthlyCost)} | `;
+            exportText += `Tarifa por hora: ${formatCurrency(position.hourlyRate)}\n\n`;
+        });
+    }
 
     exportText += '─────────────────────────────────────────────\n';
     exportText += 'SCOPE OF WORK (SOW):\n';
@@ -260,9 +421,24 @@ function exportQuote() {
         exportText += 'No hay tareas agregadas\n\n';
     } else {
         state.tasks.forEach((task, index) => {
-            const taskCost = task.hours * state.hourlyRate;
+            const totalTaskHours = Object.values(task.positionHours).reduce((sum, hours) => sum + hours, 0);
+            const taskCost = Object.entries(task.positionHours).reduce((sum, [positionId, hours]) => {
+                const position = state.positions.find(p => p.id === parseInt(positionId));
+                if (position) {
+                    return sum + (hours * position.hourlyRate);
+                }
+                return sum;
+            }, 0);
+
             exportText += `${index + 1}. ${task.name}\n`;
-            exportText += `   Horas: ${formatNumber(task.hours)} | Costo: ${formatCurrency(taskCost)}\n\n`;
+            Object.entries(task.positionHours).forEach(([positionId, hours]) => {
+                const position = state.positions.find(p => p.id === parseInt(positionId));
+                if (position && hours > 0) {
+                    const positionCost = hours * position.hourlyRate;
+                    exportText += `   - ${position.name}: ${formatNumber(hours)} hrs × ${formatCurrency(position.hourlyRate)}/hr = ${formatCurrency(positionCost)}\n`;
+                }
+            });
+            exportText += `   Total: ${formatNumber(totalTaskHours)} horas | Costo: ${formatCurrency(taskCost)}\n\n`;
         });
     }
 
@@ -276,7 +452,7 @@ function exportQuote() {
     if (state.tools.length === 0) {
         exportText += 'No hay herramientas agregadas\n\n';
     } else {
-        const monthlyHours = state.dailyHours * state.weeklyDays * 4.33;
+        const monthlyHours = calculateMonthlyHours();
         state.tools.forEach((tool, index) => {
             const proratedCost = (tool.monthlyCost / monthlyHours) * totalHours;
             exportText += `${index + 1}. ${tool.name}\n`;
@@ -314,9 +490,11 @@ function clearAll() {
         return;
     }
 
+    state.positions = [];
     state.tasks = [];
     state.tools = [];
 
+    renderPositions();
     renderTasks();
     renderTools();
     updateAllSummaries();
@@ -325,30 +503,23 @@ function clearAll() {
 }
 
 // Event Listeners
-elements.monthlyCost.addEventListener('input', (e) => {
-    state.monthlyCost = parseFloat(e.target.value) || 0;
-    updateAllSummaries();
+elements.addPosition.addEventListener('click', addPosition);
+
+elements.positionName.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        elements.positionMonthlyCost.focus();
+    }
 });
 
-elements.dailyHours.addEventListener('input', (e) => {
-    state.dailyHours = parseFloat(e.target.value) || 0;
-    updateAllSummaries();
-});
-
-elements.weeklyDays.addEventListener('input', (e) => {
-    state.weeklyDays = parseFloat(e.target.value) || 0;
-    updateAllSummaries();
+elements.positionMonthlyCost.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        addPosition();
+    }
 });
 
 elements.addTask.addEventListener('click', addTask);
 
 elements.taskName.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        elements.taskHours.focus();
-    }
-});
-
-elements.taskHours.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         addTask();
     }
